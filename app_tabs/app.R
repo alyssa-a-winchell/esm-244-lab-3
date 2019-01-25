@@ -20,9 +20,11 @@ ui <- fluidPage(
                      value = 30),
          radioButtons("color",
                       "Pick a color:",
-                      choices = c("red",
+                      choices = c("pink",
                                   "blue",
-                                  "purple"))
+                                  "purple",
+                                  "orange",
+                                  "green"))
       ),
       
       # Show a plot of the generated distribution
@@ -32,7 +34,8 @@ ui <- fluidPage(
           tabPanel("Distribution",
                    plotOutput("distPlot")),
           tabPanel("Scatterplot",
-                   plotOutput("scatterplot"))
+                   plotOutput("scatterplot")),
+          tabPanel("Summary")
         )
       )
    )
@@ -48,7 +51,7 @@ server <- function(input, output) {
       bins <- seq(min(x), max(x), length.out = input$bins + 1)
       
       # draw the histogram with the specified number of bins
-      hist(x, breaks = bins, col = 'darkgray', border = 'white')
+      hist(x, breaks = bins, col = input$color, border = 'white')
    })
    output$scatterplot <- renderPlot({
      ggplot(faithful, aes(x = eruptions, y = waiting)) +

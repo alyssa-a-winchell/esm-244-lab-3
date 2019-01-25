@@ -1,0 +1,134 @@
+---
+title: "Lab 3 Notes"
+author: "Alyssa Winchell"
+date: "January 24, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+0. attach packages
+
+```{r pakages, include=FALSE}
+
+library(tidyverse)
+library(boot)
+library(naniar)
+library(simputation)
+
+```
+
+A. Bootsrapping penguin flipper lengths
+
+1. get penguin data
+
+```{r}
+
+penguins <- read_csv("penguins.csv")
+
+male_p <- penguins %>%
+  filter(sex == "MALE")
+
+# LOOK AT IT
+
+ggplot(male_p, aes(x = flipper_length)) +
+  geom_histogram(bins = 10) +
+  theme_light()
+
+flippers <- male_p %>%
+  pull(flipper_length)
+
+```
+
+CREATE A FUNCTION AND DO SOME BOOTSTRAPPING (With replacement)
+
+```{r}
+
+mean_fun <- function(x,i) {mean(x[i])} #i will be bootstrap sample #, so x of bootstrap # to let it know that it will do the function for multiple times
+
+set.seed(10) #sets it as your bootstrap so you can recall for this same output. Seed number doesn't matter. Good for making reproducible dataset. set.seed10 will now be this way for whole project so can't reuse
+boot_10 <- boot(flippers, mean_fun, R = 10) #vector, function, R is how many bootstrapping samples
+
+boot_10
+
+set.seed(10)
+boot(flippers, mean_fun,R = 10) #if I change R here, it would override previous set.seed(10)
+
+boot_100 <- boot(flippers, mean_fun,R = 100) #whats the sampling distribution of means of our diff samples
+
+ggplot() +
+  aes(boot_100$t) +
+  geom_histogram() #sampling distribution of means
+
+boot_10thou <- boot(flippers, mean_fun, R = 10000)
+
+ggplot() +
+  aes(boot_10thou$t) +
+  geom_histogram()
+
+#as you increase and look for convergence, is error and bias changing? if it has stopped, then convergence happened
+
+#CAlc confidence interval w/ boot.ci() fxn in boot package
+
+boot.ci(boot_10thou, conf = 0.95) #?boot.ci in console will show smumary
+
+```
+
+in console, boot_10$t shows means of all samples; boot_10$ something else... shows something else...
+
+EVALUTAING MISSINGNESS WITH NANIAR
+
+View(airquality) in console to look at data
+
+```{r}
+
+vis_miss(airquality) #visual summ of missingness. bare minimum of what to do w/ missingness to see if it aligns across multiple variables. prop w/in variable of missing also shown
+
+gg_miss_var(airquality, facet = Month) #counts of missings, facet breaks it up by what you specify
+
+#fxns to work with ggplot
+#geom_miss_point()
+
+ggplot(airquality,
+       aes(x = Ozone,
+           y = Solar.R)) +
+  geom_miss_point()
+
+#on y axis, where solar.r was measured but ozone wasn't. along x axis, ozone was measured but solar.r wasn't
+#can also look at faets to explore groupings
+
+ggplot(airquality,
+       aes(x = Solar.R,
+           y = Temp)) +
+  geom_miss_point() +
+  scale_color_manual(values =c("orange","purple")) +
+  facet_wrap(~Month) +
+  theme_minimal()
+
+#shadow matrix to see what data is imputed later on if imputing. gives binary indicator of whether obs was NA or not for all variables
+
+na_shadow <- bind_shadow(airquality)
+
+```
+
+```{r}
+
+#Imputation by linear regression (Warning: will lead to overfit models. don't use if low n with many NA. should not be first in most cases, would rather deal with uncertanties of missing data)
+
+airquality %>%
+  impute_lm(Ozone ~ Temp + Wind) %>%
+  ggplot(aes(x = Temp,
+             y = Ozone)) + 
+  geom_point()
+
+na_shadow %>%
+  impute_lm(Ozone ~ Temp + Wind) %>%
+  ggplot(aes(x = Temp, y = Ozone, color = Ozone_NA)) +
+  geom_point()
+
+```
+
+
